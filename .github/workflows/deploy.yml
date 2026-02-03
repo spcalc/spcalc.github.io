@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Build & Deploy (gh-pages)
 
 on:
   push:
@@ -6,39 +6,65 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
 concurrency:
-  group: "pages"
+  group: "gh-pages"
   cancel-in-progress: true
 
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      # --- Build calculator (Vite) ---
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: calculator/package-lock.json
 
-      - run: npm ci
-      - run: npm run build
+      - name: Install calculator deps
+        working-directory: calculator
+        run: npm ci
 
-      # Vite default build output is "dist"
-      - uses: actions/upload-pages-artifact@v3
+      - name: Build calculator
+        working-directory: calculator
+        run: npm run build
+
+      - name: Copy calculator assets into MkDocs docs/assets
+        run: |
+          rm -rf docs/assets/calculator
+          mkdir -p docs/assets/calculator
+          # Copy built assets (hashed files) into docs
+          cp -R calculator/dist/assets/* docs/assets/calculator/
+          # Copy manifest (Vite places it under dist/.vite)
+          if [ -f calculator/dist/.vite/manifest.json ]; then
+            cp calculator/dist/.vite/manifest.json docs/assets/calculator/manifest.json
+          elif [ -f calculator/dist/manifest.json ]; then
+            cp calculator/dist/manifest.json docs/assets/calculator/manifest.json
+          else
+            echo "ERROR: manifest.json not found in calculator/dist" && exit 1
+          fi
+
+      # --- Build & deploy MkDocs to gh-pages ---
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          path: dist
+          python-version: "3.x"
 
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Install MkDocs
+        run: |
+          python -m pip install --upgrade pip
+          pip install mkdocs-material
+
+      - name: Deploy with mkdocs gh-deploy
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdocs gh-deploy --force --clean
