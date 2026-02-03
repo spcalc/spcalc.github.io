@@ -1,17 +1,42 @@
-# Welcome to MkDocs
+---
+hide:
+  - toc
+---
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+<div id="spcalc-root">Loading calculator…</div>
 
-## Commands
+<script>
+(async () => {
+  let manifest;
+  try {
+    const res = await fetch("/assets/calculator/manifest.json", { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    manifest = await res.json();
+  } catch (err) {
+    console.error("Failed to load Vite manifest", err);
+    const root = document.getElementById("spcalc-root");
+    if (root) root.textContent = "Failed to load calculator assets.";
+    return;
+  }
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+  const entry = manifest["index.html"];
+  if (!entry) {
+    console.error("Vite manifest missing index.html entry", manifest);
+    return;
+  }
 
-## Project layout
+  (entry.css || []).forEach((href) => {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "/assets/calculator/" + href.replace(/^assets\//, "");
+    document.head.appendChild(link);
+  });
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+  const script = document.createElement("script");
+  script.type = "module";
+  script.src = "/assets/calculator/" + entry.file.replace(/^assets\//, "");
+  document.head.appendChild(script);
+  const root = document.getElementById("spcalc-root");
+  if (root) root.textContent = "";
+})();
+</script>

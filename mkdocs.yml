@@ -2,5 +2,16 @@ site_name: Salary Packaging Calculator
 site_url: https://spcalc.github.io/
 theme:
   name: material
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - footnotes
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
 nav:
   - Home: index.md
