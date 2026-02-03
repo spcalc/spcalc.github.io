@@ -1,0 +1,6 @@
+site_name: Salary Packaging Calculator
+site_url: https://spcalc.github.io/
+theme:
+  name: material
+nav:
+  - Home: index.md
